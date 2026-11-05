@@ -23,9 +23,10 @@ input,select,textarea{width:100%;padding:9px;border:1px solid #bbb;border-radius
 table{width:100%;border-collapse:collapse;font-size:.9rem}td,th{padding:6px;border-bottom:1px solid #eee;text-align:left}
 .sheet{position:relative;width:210mm;height:297mm;background:#fff;margin:auto;box-shadow:0 1px 6px #0004;color:#000;font-family:Arial,sans-serif;overflow:hidden}
 .sheet *{position:absolute}.mk{width:10mm;height:10mm;background:#000}
-.bb{width:6mm;height:6mm;border:.35mm solid #000;border-radius:50%}
-.qn{width:12mm;text-align:right;font-size:3.2mm;line-height:6mm}
-.lt{width:6mm;text-align:center;font-size:3.2mm;font-weight:bold}
+.bb{width:5mm;height:5mm;border:.35mm solid #000;border-radius:50%}
+.qn{width:14mm;text-align:right;font-size:3mm;line-height:5mm}
+.lt{width:6mm;text-align:center;font-size:2.9mm;font-weight:bold;line-height:3.4mm}
+.gt{width:16mm;font-size:2.4mm;font-weight:bold;line-height:3.4mm}
 @page{size:A4;margin:0}
 @media print{header,nav,.noprint{display:none!important}body{background:#fff}main{padding:0;max-width:none}.card{box-shadow:none;padding:0;margin:0}.sheet{box-shadow:none}}
 </style></head><body>
@@ -47,15 +48,11 @@ table{width:100%;border-collapse:collapse;font-size:.9rem}td,th{padding:6px;bord
 <div id="cvh"></div></div></section>
 
 <section id="hoja"><div class="card">
-<p class="noprint">Imprime esta hoja en tamaño A4 al 100 % (sin "ajustar a la página") y sin márgenes. Sirve para la evaluación seleccionada arriba.</p>
+<p class="noprint">Imprime esta hoja en tamaño A4 al 100 % (sin "ajustar a la página") y sin márgenes. Es la hoja de la evaluación seleccionada arriba.</p>
 <button class="btn noprint" onclick="print()">Imprimir hoja</button>
 <div class="sheet" id="sheet"></div></div></section>
 
-<section id="conf"><div class="card">
-<label>Número de preguntas (máx. 60)</label><input type="number" id="cn" min="1" max="60">
-<label>Opciones por pregunta</label><select id="co"><option>4</option><option>5</option></select>
-<label>Clave de respuestas (ej: ABCDDABC…)</label><textarea id="ck" rows="3" style="text-transform:uppercase"></textarea>
-<div id="ks" style="margin-top:6px"></div></div></section>
+<section id="conf"><div class="card" id="kv"></div></section>
 
 <section id="rs"><div class="card">
 <button class="btn" id="bcsv">Descargar CSV</button>
@@ -63,41 +60,61 @@ table{width:100%;border-collapse:collapse;font-size:.9rem}td,th{padding:6px;bord
 </main>
 <script>
 /* ---------- Geometría de la hoja (mm), medida desde el centro del marcador superior izquierdo ---------- */
-const OX=15,OY=15,AW=180,AH=255,ROWS=20;
-const pos=(q,k)=>[Math.floor(q/ROWS)*58+20+k*9, 50+(q%ROWS)*9];
+const OX=15,OY=15,AW=180,AH=255,ROWS=28,CW=90,PIT=7;
 const $=id=>document.getElementById(id);
-/* ===== CLAVES INTEGRADAS: edita aquí (n = preguntas, o = opciones, key = letras en orden) ===== */
+/* ===== CLAVES INTEGRADAS (g = grupos de preguntas) =====
+   t: título corto | o: letras de las opciones | de: número inicial | nums: etiquetas propias | key: respuestas en orden */
 const EXAMENES=[
- {name:"Nivelación sexto español",n:25,o:4,key:"BCADCABDBACAABDCCBDABDCCB"},
- {name:"Nivelación décimo español",n:19,o:4,key:"BDACDACBDCABDABCBDA"},
- {name:"Nivelación habilidades comunicativas décimo",n:20,o:4,key:""},
- {name:"Nivelación habilidades comunicativas once",n:20,o:4,key:""}];
-/* ================================================================================================ */
+ {name:"Nivelación sexto español",g:[{t:"Múltiple",o:"ABCD",de:1,key:"BCADCABDBACAABDCCBDABDCCB"}]},
+ {name:"Nivelación décimo español",g:[{t:"Múltiple",o:"ABCD",de:1,key:"BDACDACBDCABDABCBDA"}]},
+ {name:"Nivelación habilidades comunicativas décimo",g:[
+  {t:"Múltiple",o:"ABCD",de:1,key:"CABCCCBB"},
+  {t:"V / F",o:"VF",de:9,key:"VFVVV"},
+  {t:"Asociar",o:"ABCDEF",de:14,key:"BCDA"},
+  {t:"Cuadro",o:"ABCDEFGH",nums:["18a","18b","19a","19b","20a","20b"],key:"HDAGCE"},
+  {t:"Completar",o:"ABCD",nums:["21a","21b","22a","22b","23a","23b"],key:"ADACAB"},
+  {t:"Orden 24",o:"1234",nums:["24a","24b","24c","24d"],key:"3412"},
+  {t:"Orden 25",o:"1234",nums:["25a","25b","25c","25d"],key:"2431"}]},
+ {name:"Nivelación habilidades comunicativas once",g:[
+  {t:"Múltiple",o:"ABCD",de:1,key:"DCABDBACAB"},
+  {t:"Asociar",o:"ABCDEF",de:11,key:"CAEFB"},
+  {t:"Completar",o:"ABCDEFGHI",nums:["16a","16b","17a","17b","18a","18b"],key:"BACDEF"},
+  {t:"V / F",o:"VF",de:19,key:"VFFV"},
+  {t:"Orden 23",o:"ABCDEF",nums:["23-1","23-2","23-3","23-4","23-5","23-6"],key:"DBFEAC"},
+  {t:"Cuadro 24",o:"ABCD",nums:["24a","24b","24c","24d"],key:"CABD"},
+  {t:"Cuadro 25",o:"ABCDEF",nums:["25a1","25a2","25b1","25b2","25b3","25c"],key:"DEABCF"}]}];
+/* ======================================================= */
+function build(e){const rows=[],Q=[];let r=0;
+ const put=o=>{o.c=Math.floor(r/ROWS);o.v=48+(r%ROWS)*PIT;r++;rows.push(o);return o};
+ e.g.forEach(g=>{const L=g.o.split('');put({h:1,t:g.t,L});
+  [...g.key].forEach((ch,i)=>{if(r%ROWS==0)put({h:1,t:g.t,L});
+   Q.push(put({L,num:g.nums?g.nums[i]:g.de+i,key:L.indexOf(ch)}))})});
+ return{rows,Q,n:Q.length}}
+const ux=(c,k)=>c*CW+18+k*PIT;
 let S;try{S=JSON.parse(localStorage.getItem('cev'))}catch(e){}
-if(!S||!S.exams||S.exams.length!=EXAMENES.length)S={exams:EXAMENES.map(x=>({...x,key:''})),res:[],sel:0};
-S.exams.forEach((e,i)=>{const x=EXAMENES[i];e.name=x.name;if(x.key){e.n=x.n;e.o=x.o;e.key=x.key}});
+S=S||{};S.res=S.res||[];S.sel=+S.sel||0;delete S.exams;
 const save=()=>localStorage.setItem('cev',JSON.stringify(S));
-const cur=()=>S.exams[S.sel];
+const cur=()=>EXAMENES[S.sel];
 /* ---------- UI ---------- */
-$('ex').innerHTML=S.exams.map((e,i)=>`<option value="${i}">${e.name}</option>`).join('');
+$('ex').innerHTML=EXAMENES.map((e,i)=>`<option value="${i}">${e.name}</option>`).join('');
 $('ex').value=S.sel;
 $('ex').onchange=()=>{S.sel=+$('ex').value;save();refresh()};
 $('nav').onclick=e=>{const s=e.target.dataset.s;if(!s)return;document.querySelectorAll('section').forEach(x=>x.classList.toggle('on',x.id==s));
  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b==e.target))};
-function refresh(){const e=cur();$('cn').value=e.n;$('co').value=e.o;$('ck').value=e.key;
- const L=!!EXAMENES[S.sel].key;['cn','co','ck'].forEach(i=>$(i).disabled=L);keyInfo();sheet();table()}
-function keyInfo(){const e=cur(),ok=e.key.length>=e.n;$('ks').innerHTML=ok?`<span style="color:var(--ok)">✔ Clave completa (${e.n})</span>`:`<span class="warn">Clave: ${e.key.length} de ${e.n} respuestas</span>`}
-$('cn').onchange=()=>{cur().n=Math.max(1,Math.min(60,+$('cn').value||20));save();refresh()};
-$('co').onchange=()=>{cur().o=+$('co').value;cur().key=cur().key.replace(/[^A-D]/g,'').slice(0,60);save();refresh()};
-$('ck').oninput=()=>{const e=cur();e.key=$('ck').value.toUpperCase().replace(/[^A-E]/g,'').slice(0,60);save();keyInfo()};
-function sheet(){const e=cur(),L='ABCDE';let h='';
+function refresh(){const e=cur(),B=build(e);
+ $('kv').innerHTML=`<b>${e.name}</b> · ${B.n} ítems<br><br>`+e.g.map(g=>{const Q=B.Q.filter(q=>g.nums?g.nums.includes(q.num):q.num>=g.de&&q.num<g.de+g.key.length);
+  return `<p><b>${g.t}</b> (${g.o}): `+Q.map(q=>`${q.num}·${q.L[q.key]}`).join(' &nbsp;')+'</p>'}).join('');
+ sheet();table()}
+function sheet(){const e=cur(),{rows}=build(e);let h='';
  [[10,10],[190,10],[10,265],[190,265]].forEach(p=>h+=`<div class="mk" style="left:${p[0]}mm;top:${p[1]}mm"></div>`);
  h+=`<div style="left:25mm;top:20mm;width:160mm;font-size:5mm;font-weight:bold">${e.name}</div>`;
  h+=`<div style="left:25mm;top:31mm;width:160mm;font-size:3.6mm">Nombre: ______________________________________ Curso: ________</div>`;
  h+=`<div style="left:25mm;top:40mm;width:160mm;font-size:3.6mm">Fecha: ______________ &nbsp; Rellena por completo el círculo con esfero o lápiz oscuro.</div>`;
- for(let c=0;c<Math.ceil(e.n/ROWS);c++)for(let k=0;k<e.o;k++){const[u]=pos(c*ROWS,k);h+=`<div class="lt" style="left:${OX+u-3}mm;top:${OY+43}mm">${L[k]}</div>`}
- for(let q=0;q<e.n;q++){const[u0,v]=pos(q,0);h+=`<div class="qn" style="left:${OX+u0-18}mm;top:${OY+v-3}mm">${q+1}.</div>`;
-  for(let k=0;k<e.o;k++){const[u]=pos(q,k);h+=`<div class="bb" style="left:${OX+u-3}mm;top:${OY+v-3}mm"></div>`}}
+ rows.forEach(o=>{const x=OX+o.c*CW,y=OY+o.v;
+  if(o.h){h+=`<div class="gt" style="left:${x}mm;top:${y-1.7}mm">${o.t}</div>`;
+   o.L.forEach((l,k)=>h+=`<div class="lt" style="left:${OX+ux(o.c,k)-3}mm;top:${y-1.7}mm">${l}</div>`)}
+  else{h+=`<div class="qn" style="left:${x}mm;top:${y-2.5}mm">${o.num}</div>`;
+   o.L.forEach((l,k)=>h+=`<div class="bb" style="left:${OX+ux(o.c,k)-2.5}mm;top:${y-2.5}mm"></div>`)}});
  $('sheet').innerHTML=h}
 /* ---------- Visión: binarizado adaptativo + marcadores + homografía ---------- */
 function analyze(src,maxW){
@@ -142,22 +159,22 @@ function fill(a,cx,cy,r){let t=0,d=0;
 /* ---------- Calificación ---------- */
 let pend=null;
 function grade(a){
- const e=cur(),[tl,tr,bl,br]=a.pts,dist=(p,q)=>Math.hypot(p[0]-q[0],p[1]-q[1]);
+ const e=cur(),{Q,n}=build(e),[tl,tr,bl,br]=a.pts,dist=(p,q)=>Math.hypot(p[0]-q[0],p[1]-q[1]);
  const H=homog([[0,0],[AW,0],[0,AH],[AW,AH]],a.pts);
- const sc=(dist(tl,tr)/AW+dist(bl,br)/AW+dist(tl,bl)/AH+dist(tr,br)/AH)/4,rr=1.8*sc;
+ const sc=(dist(tl,tr)/AW+dist(bl,br)/AW+dist(tl,bl)/AH+dist(tr,br)/AH)/4,rr=1.5*sc;
  const ans=[];let ok=0;const rev=[],cx=a.cx;cx.lineWidth=Math.max(2,sc*.5);
- for(let q=0;q<e.n;q++){
-  const f=[];for(let k=0;k<e.o;k++){const[x,y]=H(...pos(q,k));f.push(fill(a,x,y,rr))}
+ Q.forEach(q=>{
+  const f=q.L.map((_,k)=>{const[x,y]=H(ux(q.c,k),q.v);return fill(a,x,y,rr)});
   const m=f.map((v,k)=>v>.5?k:-1).filter(k=>k>=0);
-  const sel=m.length==1?m[0]:(m.length?-2:-1),key=e.key.charCodeAt(q)-65,good=sel==key;
-  ans.push(sel<0?(sel==-2?'*':'-'):'ABCDE'[sel]);if(good)ok++;
-  if(sel==-1)rev.push(`${q+1} (en blanco)`);if(sel==-2)rev.push(`${q+1} (doble marca)`);
-  if(key>=0&&key<e.o){const[x,y]=H(...pos(q,key));cx.strokeStyle='#1b9e4b';cx.beginPath();cx.arc(x,y,rr*1.5,0,7);cx.stroke()}
-  if(sel>=0&&!good){const[x,y]=H(...pos(q,sel));cx.strokeStyle='#d33';cx.beginPath();cx.arc(x,y,rr*1.5,0,7);cx.stroke()}}
- const nota=(5*ok/e.n).toFixed(1);
- pend={exam:e.name,ok,n:e.n,nota,ans:ans.join(''),date:new Date().toLocaleString('es-CO')};
+  const sel=m.length==1?m[0]:(m.length?-2:-1),good=sel==q.key;
+  ans.push(sel<0?(sel==-2?'*':'-'):q.L[sel]);if(good)ok++;
+  if(sel==-1)rev.push(`${q.num} (en blanco)`);if(sel==-2)rev.push(`${q.num} (doble marca)`);
+  const ring=(k,c)=>{const[x,y]=H(ux(q.c,k),q.v);cx.strokeStyle=c;cx.beginPath();cx.arc(x,y,rr*1.7,0,7);cx.stroke()};
+  ring(q.key,'#1b9e4b');if(sel>=0&&!good)ring(sel,'#d33')});
+ const nota=(5*ok/n).toFixed(1);
+ pend={exam:e.name,ok,n,nota,ans:ans.join(''),date:new Date().toLocaleString('es-CO')};
  $('res').hidden=false;
- $('sum').innerHTML=`<div class="big">${ok} / ${e.n} aciertos · Nota ${nota}</div>`+(e.key.length<e.n?'<div class="warn">⚠ La clave está incompleta.</div>':'');
+ $('sum').innerHTML=`<div class="big">${ok} / ${n} aciertos · Nota ${nota}</div>`;
  $('rev').textContent=rev.length?'Revisar: '+rev.join(', '):'';
  $('cvh').innerHTML='';$('cvh').appendChild(a.cv);$('res').scrollIntoView({behavior:'smooth'})}
 function run(src){const a=analyze(src,1280);
